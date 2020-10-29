@@ -1,6 +1,6 @@
 {
   "name": "gohttp",
-  "version": "3.2.5",
+  "version": "3.2.6",
   "description": "http client for HTTP/1.1",
   "main": "gohttp.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/master-genius/httpcli.git"
+    "url": "https://gitee.com/daoio/gohttp"
   },
   "keywords": [
     "http",
@@ -26,7 +26,7 @@
   "author": "BraveWang",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/master-genius/httpcli/issues"
+    "url": "https://gitee.com/daoio/gohttp/issues"
   },
-  "homepage": "https://github.com/master-genius/httpcli#readme"
+  "homepage": "https://gitee.com/daoio/gohttp/blob/master/README.md"
 }
