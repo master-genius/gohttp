@@ -1,49 +1,63 @@
 'use strict';
 
-const crypto = require('crypto');
+//const crypto = require('crypto');
 const fs = require('fs');
 
 var bodymaker = function (options = {}) {
   if (!(this instanceof bodymaker)) {return new bodymaker(options);}
 
   //最大同时上传文件数量限制
-  this.max_upload_limit = 10;
+  this.maxUploadLimit = 10;
 
   //上传文件最大数据量
-  this.max_upload_size = 2000000000;
+  this.maxUploadSize = 2000000000;
 
   //单个文件最大上传大小
-  this.max_file_size = 1000000000;
+  this.maxFileSize = 1000000000;
 
   this.mime_map = {
     'css'   : 'text/css',
     'der'   : 'application/x-x509-ca-cert',
     'gif'   : 'image/gif',
-    'gz'  : 'application/x-gzip',
-    'h'   : 'text/plain',
+    'gz'    : 'application/x-gzip',
+    'h'     : 'text/plain',
     'htm'   : 'text/html',
     'html'  : 'text/html',
+    'c'     : 'text/plain',
+    'txt'   : 'text/plain',
+    'js'    : 'application/x-javascript',
+    
     'jpg'   : 'image/jpeg',
     'jpeg'  : 'image/jpeg',
     'png'   : 'image/png',
-    'js'  : 'application/x-javascript',
+    'gif'   : 'image/gif',
+    'webp'  : 'image/webp',
+
     'mp3'   : 'audio/mpeg',
     'mp4'   : 'video/mp4',
-    'c'   : 'text/plain',
+    'webm'  : 'video/webm',
+    
     'exe'   : 'application/octet-stream',
-    'txt'   : 'text/plain',
+    
     'wav'   : 'audio/x-wav',
     'svg'   : 'image/svg+xml',
     'tar'   : 'application/x-tar',
-    'webp'  : 'image/webp'
+    
+    'ttf'   : 'font/ttf',
+    'wtf'   : 'font/wtf',
+    'woff'  : 'font/woff',
+    'woff2' : 'font/woff2',
+    'ttc'   : 'font/ttc',
   };
 
   this.default_mime   = 'application/octet-stream';
 
   this.extName = function (filename = '') {
     if (filename.length <= 0) { return ''; }
-    var name_split = filename.split('.').filter(p => p.length > 0);
+    let name_split = filename.split('.').filter(p => p.length > 0);
+
     if (name_split.length < 2) { return ''; }
+    
     return name_split[name_split.length - 1];
   };
 
@@ -58,6 +72,21 @@ var bodymaker = function (options = {}) {
 
 };
 
+bodymaker.prototype.fmtName = function (name) {
+  return name.replace(/"/g, '\\"');
+};
+
+bodymaker.prototype.fmtFilename = function (name) {
+  if (name.indexOf('/') >= 0) {
+    let namesplit = name.split('/').filter(p => p.length > 0);
+    if (namesplit.length > 0) {
+      name = namesplit[namesplit.length - 1];
+    }
+  }
+
+  return name.replace(/"/g, '\\"');
+}
+
 bodymaker.prototype.makeUploadData = async function (r) {
   var bdy = this.boundary();
 
@@ -65,7 +94,8 @@ bodymaker.prototype.makeUploadData = async function (r) {
   if (r.form !== undefined) {
     if (typeof r.form === 'object') {
       for (let k in r.form) {
-        formData += `\r\n--${bdy}\r\nContent-Disposition: form-data; name=${'"'}${k}${'"'}\r\n\r\n${r.form[k]}`;
+        formData += `\r\n--${bdy}\r\nContent-Disposition: form-data; `
+                + `name=${'"'}${this.fmtName(k)}${'"'}\r\n\r\n${r.form[k]}`;
       }
     }
   }
@@ -89,8 +119,13 @@ bodymaker.prototype.makeUploadData = async function (r) {
         t = r.files[k];
       }
       let fst = null;
+      let name;
+      let filename;
       for (let i=0; i<t.length; i++) {
-        header_data = `Content-Disposition: form-data; name=${'"'}${k}${'"'}; filename=${'"'}${t[i]}${'"'}\r\nContent-Type: ${this.mimeType(t[i])}`;
+        header_data = `Content-Disposition: form-data; `
+            + `name=${'"'}${this.fmtName(k)}${'"'}; `
+            + `filename=${'"'}${this.fmtFilename(t[i])}${'"'}`
+            + `\r\nContent-Type: ${this.mimeType(t[i])}`;
 
         payload = `\r\n--${bdy}\r\n${header_data}\r\n\r\n`;
         content_length += Buffer.byteLength(payload);
@@ -99,7 +134,7 @@ bodymaker.prototype.makeUploadData = async function (r) {
           fst = fs.statSync(t[i]);
           content_length += fst.size;
         } catch (err) {
-          console.log(err);
+          console.error(err);
           continue ;
         }
 

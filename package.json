@@ -1,6 +1,6 @@
 {
   "name": "gohttp",
-  "version": "3.2.6",
+  "version": "3.2.7",
   "description": "http client for HTTP/1.1",
   "main": "gohttp.js",
   "scripts": {
