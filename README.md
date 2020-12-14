@@ -1,5 +1,5 @@
 
-![](images/gohttp.png)
+![](images/gohttp.jpg)
 
 # gohttp
 
@@ -144,7 +144,7 @@ gohttp.download('https://localhost:2021/download', {
 }).then(d => {
     console.log(d || '');
 }).catch(err => {
-    console.log(err);
+    console.error(err);
 });
 
 ```
