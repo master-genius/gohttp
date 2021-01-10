@@ -255,10 +255,10 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
           ret.status = res.statusCode;
           ret.headers = res.headers;
 
-          if (res.statusCode == 200) {
-            ret.ok = true;
-          } else {
+          if (res.statusCode >= 400) {
             ret.ok = false;
+          } else {
+            ret.ok = true;
           }
           rv(ret);
         });
