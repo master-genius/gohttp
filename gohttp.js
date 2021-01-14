@@ -553,7 +553,7 @@ gohttp.prototype.transmit = function (url, opts = {}) {
   return this._coreRequest(uobj, {body: opts.rawbody}, postopts);
 };
 
-module.exports = new gohttp();
+module.exports = gohttp;
 
 /* 
 gohttp.prototype.cacheUrl = {};

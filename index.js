@@ -1,9 +1,11 @@
 'use strict'
 
-const httpcli = require('./gohttp')
-const http2cli = require('./hiio')
+const goh = require('./gohttp.js')
+const h2c = require('./hiio.js')
 
 module.exports = {
-  httpcli,
-  http2cli,
+  httpi : goh,
+  httpii : h2c,
+  httpcli : new goh(),
+  http2cli : new h2c(),
 }

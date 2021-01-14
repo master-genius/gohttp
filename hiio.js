@@ -1,11 +1,11 @@
 'use strict';
 
-const http2 = require('http2');
-const crypto = require('crypto');
-const fs = require('fs');
-const urlparse = require('url');
-const qs = require('querystring');
-const bodymaker = require('./bodymaker');
+const http2 = require('http2')
+const crypto = require('crypto')
+const fs = require('fs')
+const urlparse = require('url')
+const qs = require('querystring')
+const bodymaker = require('./bodymaker')
 
 function parseUrl (url) {
 
@@ -20,6 +20,69 @@ function parseUrl (url) {
     url : urlobj,
     headers:headers
   }
+
+}
+
+  //Content-Range: <unit> <range-start>-<range-end>/<size>
+  //Content-Range: <unit> <range-start>-<range-end>/*
+  //Content-Range: <unit> */<size>
+  //unit 是单位，通常按照字节表示：bytes
+/**
+ * 此处解析只认为unit是bytes。
+ * @param {string} range 
+ */
+function parseContentRange(range) {
+  let rsplit = range.split(' ').filter(p => p.length > 0)
+
+  if (rsplit.length < 2) {
+    return null
+  }
+
+  let robj = {
+    start : '*',
+    end : '*',
+    size : '*'
+  }
+
+  let parseStartEnd = (rst) => {
+    if (rst === '*') {
+      return robj
+    }
+
+    let mind = rst.indexOf('-')
+    if (mind < 0) {
+      return null
+    }
+
+    robj.start = parseInt(rst.substring(0, mind))
+    if (mind < rst.length - 1) {
+      robj.end = parseInt(rst.substring(mind+1))
+    }
+
+    return robj
+  }
+
+  let slashIndex = rsplit[1].indexOf('/')
+
+  if (slashIndex === 0) {
+    return null
+  }
+
+  if (slashIndex > 0) {
+    let bytes_arr = rsplit[1].split('/')
+    if (bytes_arr.length < 2) {
+      return null
+    }
+    
+    if (bytes_arr[1] !== '*') {
+      robj.size = parseInt(bytes_arr[1])
+    }
+
+    return parseStartEnd(bytes_arr[0])
+
+  }
+
+  return parseStartEnd(rsplit[1])
 
 }
 
@@ -41,12 +104,7 @@ async function payload (reqobj, mkbody) {
 
   //直接转发请求过来的数据。
   if (reqobj.body instanceof Buffer) {
-    return 'ok'
-  }
-
-  let formbody = {
-    length: 0,
-    data : '',
+    return 'body'
   }
 
   let bodytype = typeof reqobj.body
@@ -60,9 +118,10 @@ async function payload (reqobj, mkbody) {
   }
 
   if (bodytype === 'string') {
-    formbody.length = Buffer.byteLength(reqobj.body)
-    formbody.data = reqobj.body
-    reqobj.headers['content-length'] = formbody.length
+    
+    reqobj.headers['content-length'] = Buffer.byteLength(reqobj.body)
+
+    return 'body'
 
   } else if (reqobj.multipart && bodytype === 'object') {
 
@@ -70,22 +129,25 @@ async function payload (reqobj, mkbody) {
     
     reqobj.headers['content-type'] = tmpbody['content-type']
     reqobj.headers['content-length'] = tmpbody['content-length']
-    formbody.data = tmpbody.body
+    //reqobj._bodyData = tmpbody.body
+    return tmpbody
 
   } else if (bodytype === 'object') {
-    if (reqobj.postform) {
-      reqobj.headers['content-type'] = 'application/x-www-form-urlencoded'
-    }
-    if (reqobj.headers['content-type'] === 'application/x-www-form-urlencoded') {
-      formbody.data = Buffer.from(qs.stringify(reqobj.body))
-    } else {
-      formbody.data = Buffer.from(JSON.stringify(reqobj.body))
-    }
-    formbody.length = formbody.data.length
-    reqobj.headers['content-length'] = formbody.length
-  }
 
-  return formbody
+    let tmpbody = {
+      body : ''
+    }
+
+    if (reqobj.headers['content-type'] === 'application/x-www-form-urlencoded') {
+      tmpbody.body = Buffer.from(qs.stringify(reqobj.body))
+    } else {
+      tmpbody.body = Buffer.from(JSON.stringify(reqobj.body))
+    }
+
+    reqobj.headers['content-length'] = tmpbody.length
+
+    return tmpbody
+  }
 
 }
 
@@ -128,7 +190,7 @@ class _response {
 
 }
 
-async function _download (stream, reqobj, ret, payload) {
+async function _download (stream, reqobj, ret, bkey) {
 
   if (!reqobj.dir) {
     reqobj.dir = './'
@@ -136,7 +198,21 @@ async function _download (stream, reqobj, ret, payload) {
     reqobj.dir += '/'
   }
 
+  let _writeStream
+
   let onResponse = (headers, flags) => {
+    ret.headers = headers
+    ret.status = parseInt(headers[':status'] || 0)
+    if (ret.status > 0 && ret.status < 400) {
+      ret.ok = true
+    } else {
+      ret.ok = false
+    }
+
+    if (ret.status !== 200) {
+      return
+    }
+
     let filename = ''
     if(headers['content-disposition']) {
       let name_split = headers['content-disposition']
@@ -170,8 +246,36 @@ async function _download (stream, reqobj, ret, payload) {
 
     let target = reqobj.target || `${reqobj.dir}${filename}`
 
+    let wstm_opts = {
+      encoding : 'binary'
+    }
+    
+    /**
+     * 存在content-range并且已经存在对应名称的文件：
+     *  - 解析content-range
+     *  - 检测文件尺寸
+     *  - 对比是否对应
+     */
+    if (headers['content-range']) {
+      
+      let range = parseContentRange(headers['content-range'])
+      if (range && range.start !== '*') {
+        try {
+          let fst = fs.statSync(filename)
+          
+          if (fst.size === range.size) {
+            stream.emit('end')
+            return
+          }
+          if (range.start > 0 && fst.size === range.start) {
+            wstm_opts.flags = 'a+'
+          }
+        } catch (err) {}
+      }
+    }
+
     try {
-      reqobj.writeStream = fs.createWriteStream(target, {encoding: 'binary'})
+      _writeStream = fs.createWriteStream(target, wstm_opts)
     } catch (err) {
       stream.emit('error', err)
     }
@@ -191,45 +295,43 @@ async function _download (stream, reqobj, ret, payload) {
 
     stream.on('data', chunk => {
       ret.totalLength += chunk.length
-      reqobj.writeStream.write(chunk)
-      if (reqobj.callback && typeof reqobj.callback === 'function') {
-        reqobj.callback(ret)
+      _writeStream.write(chunk)
+      if (reqobj.ondata && typeof reqobj.ondata === 'function') {
+        reqobj.ondata(ret)
       }
     })
 
     stream.on('end', () => {
+      stream.close()
       rv(ret)
     })
 
     stream.on('error', err => {
-      stream.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
-      rj(err)
+      stream.close()
+      ret.error = err
+      rv(ret)
     })
 
     stream.on('frameError', err => {
       stream.close()
-      rj(err || new Error('frame error'))
+      ret.error = err
+      rv(ret)
     })
 
-    if (payload === 'ok') {
-      stream.end(reqobj.body)
-    } else if (typeof payload === 'object') {
-      stream.end(payload.data)
+    if (bkey !== true) {
+      if (typeof bkey === 'object') {
+        stream.end(bkey.body)
+      } else {
+        stream.end(reqobj[bkey])
+      }
     } else {
       stream.end()
     }
 
   })
-  .then(r => {
-    return r
-  })
-  .catch (err => {
-    r.error = err
-    return r
-  })
   .finally(() => {
-    if (reqobj.writeStream) {
-      reqobj.writeStream.end()
+    if (_writeStream) {
+      _writeStream.end()
     }
   })
   
@@ -263,6 +365,10 @@ class _Request {
       }
       this.session.destroy()
     })
+  }
+
+  destroy() {
+    this.session.destroy()
   }
 
   on (evt, callback) {
@@ -314,6 +420,14 @@ class _Request {
 
   async request (reqobj, events = {}) {
 
+    if (!this.session || this.session.destroyed) {
+      if (this.keepalive) {
+        this.reconn()
+      } else {
+        throw new Error(`session is destroyed, please reconnect`)
+      }
+    }
+
     this.checkAndSetOptions(reqobj)
     
     let rb = await payload(reqobj, this.bodymaker)
@@ -324,7 +438,7 @@ class _Request {
 
     if (reqobj.selfHandle) {
       return {
-        payload : rb,
+        bodykey : rb,
         stream : stm,
         ret : ret
       }
@@ -367,32 +481,32 @@ class _Request {
           ret.data = Buffer.concat(ret.buffers, ret.totalLength)
           ret.buffers = null
         }
+        stm.close()
         rv(ret)
       })
 
       stm.on('error', err => {
-        stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
-        rj(err)
+        stm.close()
+        ret.error = err
+        rv(ret)
       })
 
       stm.on('frameError', err => {
         stm.close()
-        rj(err || new Error('frame error'))
+        ret.error = err
+        rv(ret)
       })
 
-      if (rb === 'ok') {
-        stm.end(reqobj.body)
-      } else if (typeof rb === 'object') {
-        stm.end(rb.data)
+      if (rb !== true) {
+        if (typeof rb === 'object') {
+          stm.end(rb.body)
+        } else {
+          stm.end(reqobj[rb])
+        }
+      } else {
+        stm.end()
       }
 
-    })
-    .then(r => {
-      return r
-    })
-    .catch (err => {
-      r.error = err
-      return r
     })
 
   }
@@ -445,14 +559,96 @@ class _Request {
 
   async up (reqobj) {
     reqobj.files = {}
-    reqobj.files[reqobj.name] = reqobj.file
+    reqobj.files[ reqobj.name ] = reqobj.file
     return this.upload(reqobj)
   }
 
   async download (reqobj) {
     reqobj.selfHandle = true
-    let r = this.request(reqobj)
-    return _download(r.stream, reqobj, r.ret, r.payload)
+    let r = await this.request(reqobj)
+    return _download(r.stream, reqobj, r.ret, r.bodykey)
+  }
+
+}
+
+/**
+ * 多个session负载均衡，提高客户端请求效率。
+ */
+
+class sessionPool {
+
+  constructor (options = {}) {
+    this.max = 10
+    this.pool = []
+    this.step = -1
+
+    for (let k in options) {
+      switch (k) {
+        case 'max':
+          this.max = options.max
+          break
+      }
+    }
+
+  }
+
+  request (reqobj, events = {}) {
+    return this.getSession().request(reqobj, events)
+  }
+
+  get (reqobj) {
+    return this.getSession().get(reqobj)
+  }
+
+  post (reqobj) {
+    return this.getSession().post(reqobj)
+  }
+
+  put (reqobj) {
+    return this.getSession().put(reqobj)
+  }
+
+  delete (reqobj) {
+    return this.getSession().delete(reqobj)
+  }
+
+  options (reqobj) {
+    return this.getSession().options(reqobj)
+  }
+
+  upload (reqobj) {
+    return this.getSession().upload(reqobj)
+  }
+
+  up (reqobj) {
+    return this.getSession().up(reqobj)
+  }
+
+  download (reqobj) {
+    return this.getSession().download(reqobj)
+  }
+
+  destroy () {
+    for (let i = 0; i < this.pool.length; i++) {
+      this.pool[i].session.destroy()
+    }
+  }
+
+  getSession () {
+    if (this.pool.length <= 0) {
+      return null
+    }
+    if ( (this.step+1) >= this.pool.length) {
+      this.step = -1
+    }
+    this.step += 1
+    return this.pool[this.step]
+  }
+
+  add (sess) {
+    if (this.pool.length < this.max) {
+      this.pool.push(sess)
+    }
   }
 
 }
@@ -569,4 +765,27 @@ hiio.prototype.connect = function (url, options = {}) {
 
 }
 
-module.exports = new hiio()
+hiio.prototype.connectPool = function (url, options = {}) {
+
+  if (options.max === undefined || options.max <= 0) {
+    options.max = 5
+  }
+
+  let max = options.max
+
+  let sp = new sessionPool({max : max})
+
+  delete options.max
+
+  if (!options.keepalive) {
+    options.keepalive = true
+  }
+
+  for (let i = 0; i < max; i++) {
+    sp.add( this.connect(url, options) )
+  }
+
+  return sp
+}
+
+module.exports = hiio
