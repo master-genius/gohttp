@@ -367,8 +367,16 @@ class _Request {
     })
   }
 
+  close () {
+    if (this.session && !this.session.closed) {
+      this.session.close()
+    }
+  }
+
   destroy() {
-    this.session.destroy()
+    if (this.session && !this.session.destroyed) {
+      this.session.destroy()
+    }
   }
 
   on (evt, callback) {
@@ -630,7 +638,13 @@ class sessionPool {
 
   destroy () {
     for (let i = 0; i < this.pool.length; i++) {
-      this.pool[i].session.destroy()
+      this.pool[i].destroy()
+    }
+  }
+
+  close () {
+    for (let i = 0; i < this.pool.length; i++) {
+      this.pool[i].close()
     }
   }
 

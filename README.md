@@ -292,3 +292,7 @@ hs.upload({
 ### 持久连接
 
 使用http2作为持久连接，一个连接可以发送多个请求，可以使用HTTP/2协议作为查询服务，基于协议的强大特性，可以完成比较复杂的功能。并且，可以方便实现RPC，这方面其实已经有先例。HTTP/2本身是支持不使用HTTPS的，浏览器在实现上，要求必须是启用HTTPS，但是基于Node.js，使用http2是可以不启用https完成通信，在内网通信时，可以处理更快。
+
+### close 和 destroy
+
+提供了close和destroy接口，不过没有参数，就是在内部调用了http2Session的close和destroy。
