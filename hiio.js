@@ -414,9 +414,9 @@ class _Request {
       reqobj.path = '/'
     }
 
-    /* if (reqobj.path[0] !== '/') {
+    if (reqobj.path[0] !== '/') {
       reqobj.path = `/${reqobj.path}`
-    } */
+    }
 
     if (reqobj.timeout === undefined) {
       reqobj.timeout = 15000
@@ -440,8 +440,13 @@ class _Request {
     
     let rb = await payload(reqobj, this.bodymaker)
 
-    let stm = this.session.request(reqobj.headers, reqobj.options || {})
-
+    let stm
+    if (reqobj.options) {
+      stm = this.session.request(reqobj.headers, reqobj.options || {})
+    } else {
+      stm = this.session.request(reqobj.headers)
+    }
+    
     let ret = new _response()
 
     if (reqobj.selfHandle) {
