@@ -353,6 +353,9 @@ class _Request {
   init() {
     this.session.on('close', () => {
       if (this.keepalive && typeof this.reconn === 'function') {
+        if (this.debug) {
+          console.log('Connect close, reconnect...')
+        }
         this.reconn()
       } else {
         this.free()
@@ -777,6 +780,7 @@ hiio.prototype.connect = function (url, options = {}) {
     newReq.reconn = () => {
       options.sessionRequest = newReq
       this.connect(url, options)
+      newReq.init()
     }
   }
 
