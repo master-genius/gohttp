@@ -749,6 +749,17 @@ hiio.prototype.connect = function (url, options = {}) {
     options.rejectUnauthorized = false
   }
 
+  if (options.peerMaxConcurrentStreams === undefined) {
+    options.peerMaxConcurrentStreams = 100
+  }
+
+  if (options.settings === undefined) {
+    options.settings = {
+      maxHeaderListSize: 16368,
+      maxConcurrentStreams: 100
+    }
+  }
+
   if (options.checkServerIdentity === undefined) {
     options.checkServerIdentity = (name, cert) => {}
   }
