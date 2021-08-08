@@ -202,6 +202,13 @@ let hs = http2cli.connectPool('http://localhost:1234', {
 })
 
 //hs能使用的接口和connect返回的hsession一致。
+//自动从连接池选择一个进行请求。
+hs.get({
+    path : '/'
+})
+.then(res => {
+    console.log(res.text())
+})
 
 ```
 
@@ -281,6 +288,32 @@ hs.upload({
     form : {
         id : '1001'
     }
+})
+.then(ret => {
+    console.log(ret.error)
+    console.log(ret.status, ret.text())
+})
+
+```
+
+### 简易上传
+
+简易上传仅支持单个上传名，是对upload的封装。
+
+```javascript
+
+const {http2cli} = require('gohttp')
+
+//返回值是包装了http2Session实例的一个对象，并提供了常用请求和request方法。
+let hs = http2cli.connect('http://localhost:1234')
+
+hs.up({
+    path : '/upload',
+    name : 'image',
+    file : [
+        process.env.HOME + '/tmp/images/123.jpg',
+        process.env.HOME + '/tmp/images/space2.jpg',
+    ]
 })
 .then(ret => {
     console.log(ret.error)

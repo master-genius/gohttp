@@ -431,6 +431,10 @@ class _Request {
 
   async request (reqobj, events = {}) {
 
+    this.checkAndSetOptions(reqobj)
+    
+    let rb = await payload(reqobj, this.bodymaker)
+
     if (!this.session || this.session.destroyed) {
       if (this.keepalive) {
         this.reconn()
@@ -439,13 +443,9 @@ class _Request {
       }
     }
 
-    this.checkAndSetOptions(reqobj)
-    
-    let rb = await payload(reqobj, this.bodymaker)
-
     let stm
     if (reqobj.options) {
-      stm = this.session.request(reqobj.headers, reqobj.options || {})
+      stm = this.session.request(reqobj.headers, reqobj.options)
     } else {
       stm = this.session.request(reqobj.headers)
     }
