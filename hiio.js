@@ -347,15 +347,26 @@ class _Request {
     this.pending = options.pending
     this.debug = options.debug
     this.keepalive = options.keepalive
+    this.reconnDelay = options.reconnDelay
+    this.connected = false
     this.init()
   }
 
-  init() {
-    this.session.on('close', () => {
+  init () {
+    this.session.on('connect', () => {
+      this.connected = true
+    })
+
+    this.session.on('close', async () => {
+      this.connected = false
       if (this.keepalive && typeof this.reconn === 'function') {
-        if (this.debug) {
-          console.log('Connect close, reconnect...')
-        }
+        await new Promise((rv, rj) => {
+          setTimeout(() => {
+            rv()
+          }, this.reconnDelay)
+        })
+
+        this.debug && console.log('Connect closed, reconnect...')
         this.reconn()
       } else {
         this.free()
@@ -363,9 +374,8 @@ class _Request {
     })
 
     this.session.on('error', err => {
-      if (this.debug) {
-        console.error(err)
-      }
+      this.debug && console.error(err)
+      this.connected = false
       this.session.destroy()
     })
   }
@@ -673,6 +683,12 @@ class sessionPool {
     }
   }
 
+  on (evt, callback) {
+    for (let a of this.pool) {
+      a.on(evt, callback)
+    }
+  }
+
 }
 
 /**
@@ -710,6 +726,7 @@ hiio.prototype._freeRequest = function (req) {
     req.pending = true
     req.session = null
     req.host = ''
+    req.connected = false
     this.pool.push(req)
   }
 }
@@ -718,6 +735,7 @@ hiio.prototype._getPool = function (options) {
   let r = this.pool.pop()
   
   if (r) {
+    r.connected = true
     r.session = options.session
     r.host = options.host
     r.pending = false
@@ -783,10 +801,15 @@ hiio.prototype.connect = function (url, options = {}) {
     bodymaker : this.bodymaker,
     parent : this,
     pending: false,
-    debug: options.debug === undefined ? false : options.debug,
-    keepalive : options.keepalive === undefined ? false : true,
+    debug: !!options.debug,
+    keepalive : !!options.keepalive,
+    reconnDelay : options.reconnDelay === undefined ? 500 : options.reconnDelay
   })
 
+  /**
+   * 延迟重连不能使用setTimeout，因为timer循环会在下一个循环开始执行，
+   * 而在本次循环，error的处理会先执行，此时，error事件还没有监听。
+   */
   if (options.keepalive) {
     newReq.reconn = () => {
       options.sessionRequest = newReq
