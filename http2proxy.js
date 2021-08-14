@@ -363,6 +363,10 @@ hiiproxy.prototype.mid = function () {
           stm.write(chunk)
         })
 
+        c.request.on('end', () => {
+          stm.end()
+        })
+
         stm.on('data', chunk => {
           c.reply.write(chunk)
         })
