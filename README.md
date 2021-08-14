@@ -329,3 +329,123 @@ hs.up({
 ### close 和 destroy
 
 提供了close和destroy接口，不过没有参数，就是在内部调用了http2Session的close和destroy。
+
+### 完整选项
+
+| 选项 | 说明 |
+|----|----|
+| debug | 调式模式，true或false，开启会输出错误信息。 |
+| keepalive | 是否保持连接，开启后，断开会自动重连。 |
+| max | 使用connectPool指定最大多少个连接。 |
+| reconnDelay | 重连延迟，毫秒值，默认为500毫秒。 |
+
+
+----
+
+## 反向代理
+
+基于对http2的封装以及连接池的处理，实现了基于http2连接池模式的反向代理。
+
+使用示例：
+
+```javascript
+
+'use strict'
+
+const {http2proxy} = require('gohttp')
+const titbit = require('titbit')
+
+const app = new titbit({
+  debug: true,
+  http2: true,
+  //这里应该换成你自己的证书和密钥文件路径
+  key : './rsa/localhost.key',
+  cert : './rsa/localhost.cert'
+})
+
+let hxy = new http2proxy({
+  config: {
+    'a.com' : [
+      {
+        url: 'http://localhost:2022',
+        weight: 10,
+        path : '/',
+        reconnDelay: 5000,
+        //请求后端服务时，附加的头部信息。
+        headers : {
+          'x-test-key' : `${Date.now()}-${Math.random()}`
+        }
+      },
+      {
+        url: 'http://localhost:2023',
+        weight: 5,
+        path : '/',
+        reconnDelay: 1000
+      }
+    ]
+  },
+  //调式模式输出错误信息。
+  debug: true
+})
+
+hxy.init(app)
+
+app.run(1234)
+
+```
+
+配置中，host对应的数组中每一项元素都对应一个后端服务，相同的path存在多个就表示自然地启用负载均衡功能。
+
+对应后端服务：
+
+```javascript
+'use strict'
+
+const titbit = require('titbit')
+
+/**
+ * 基于Node.js实现的http2服务端和客户端请求可以不使用https模式。
+*/
+
+const app = new titbit({
+  debug: true,
+  http2: true,
+  loadInfoFile: '/tmp/loadinfo.log',
+  globalLog: true,
+  monitorTimeSlice: 512,
+  timeout: 0
+})
+
+app.use(async (c, next) => {
+  c.setHeader('x-set-key', `${Math.random()}|${Date.now()}`)
+  await next()
+})
+
+app.get('/header', async c => {
+  c.send(c.headers)
+})
+
+app.get('/', async c => {
+  c.send(Math.random())
+})
+
+app.get('/:name/:age/:mobile/:info', async c => {
+  c.send(c.param)
+})
+
+app.post('/p', async c => {
+  c.send(c.body)
+})
+
+let port = 2022
+let port_ind = process.argv.indexOf('--port')
+
+if (port_ind > 0 && port_ind < process.argv.length - 1) {
+  port = parseInt(process.argv[port_ind + 1])
+
+  if (typeof port !== 'number') port = 2022
+}
+
+app.run(port)
+
+```
