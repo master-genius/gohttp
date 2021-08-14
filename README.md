@@ -1,5 +1,5 @@
 
-![](images/gohttp.jpg)
+![](images/gohttp.png)
 
 # gohttp
 
