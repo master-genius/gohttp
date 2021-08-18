@@ -181,7 +181,7 @@ class _response {
   }
 
   json () {
-    return JSON.parse(this.data.text())
+    return JSON.parse(this.text())
   }
 
   blob () {
