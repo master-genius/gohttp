@@ -563,9 +563,9 @@ gohttp.prototype.transmit = function (url, opts = {}) {
 
 /** ------------ 兼容http2的接口层，和hiio.js接口一致 ---------------- */
 
-let _hiicompat = function (url, t) {
+let _hiicompat = function (url, options, t) {
   if (!(this instanceof _hiicompat)) {
-    return new _hiicompat(url, t);
+    return new _hiicompat(url, options, t);
   }
 
   this.url = url;
@@ -576,12 +576,7 @@ let _hiicompat = function (url, t) {
 
   this.host = this.urlobj.host;
 
-  this.hostNoPort = this.host;
-
-  let ind = this.host.indexOf(':');
-  if (ind > 0) {
-    this.hostNoPort = this.host.substring(0, ind);
-  }
+  this.options = options;
 
   this.port = this.urlobj.port;
 
@@ -604,6 +599,15 @@ let _hiicompat = function (url, t) {
     if (!opts.method || resetMethod) opts.method = method;
 
     if (!opts.headers) opts.headers = {};
+
+    if (options && options.headers) {
+      for (let k in options.headers)
+        opts.headers[k] = options.headers[k];
+    }
+
+    if (opts.timeout === undefined && options.timeout)
+      opts.timeout = options.timeout;
+
     if (!opts.path) opts.path = this.urlobj.path;
   };
 
@@ -645,8 +649,10 @@ let _hiicompat = function (url, t) {
  * 返回 _hiicompat 实例。为兼容hiio而提供。
  * @param {string} url url字符串
  */
-gohttp.prototype.connect = function (url) {
-  return new _hiicompat(url, this);
+gohttp.prototype.connect = function (url, options = null) {
+  if (typeof options !== 'object') options = null;
+  
+  return new _hiicompat(url, options || {}, this);
 };
 
 /** ------------------------------END------------------------------ */

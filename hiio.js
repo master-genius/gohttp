@@ -395,7 +395,8 @@ class _Request {
   }
 
   on (evt, callback) {
-    return this.session.on(evt, callback)
+    this.session.on(evt, callback)
+    return this
   }
 
   free () {
