@@ -8,7 +8,7 @@ const urlparse = require('url');
 const qs = require('./qs');
 const bodymaker = require('./bodymaker');
 
-var gohttp = function (options = {}) {
+let gohttp = function (options = {}) {
   if (! (this instanceof gohttp)) { return new gohttp(options); }
 
   this.config = {
@@ -44,8 +44,9 @@ var gohttp = function (options = {}) {
 };
 
 gohttp.prototype.parseUrl = function (url) {
-  var u = new urlparse.URL(url);
-  var urlobj = {
+  let u = new urlparse.URL(url);
+
+  let urlobj = {
     hash :    u.hash,
     hostname :  u.hostname,
     protocol :  u.protocol,
@@ -53,6 +54,7 @@ gohttp.prototype.parseUrl = function (url) {
     method :  'GET',
     headers : {},
   };
+
   if (u.search.length > 0) {
     urlobj.path += u.search;
   }
@@ -96,7 +98,7 @@ gohttp.prototype.request = async function (url, options = null) {
   }
 
   if (options && !is_obj && typeof options === 'object' && opts !== options) {
-    for(let k in options) {
+    for (let k in options) {
       switch (k) {
         case 'headers':
           if (opts.headers) {
@@ -117,20 +119,37 @@ gohttp.prototype.request = async function (url, options = null) {
         case 'progress':
         case 'body':
         case 'rawBody':
+        case 'family':
           opts[k] = options[k]; break;
+
+        case 'query':
+          if (options.query) {
+            let qstr;
+            let qchar = '?';
+
+            if (typeof options.query === 'object')
+                qstr = qs(options.query);
+            else
+                qstr = options.query;
+            
+            if (opts.path.indexOf('?') > 0) qchar = '&';
+
+            opts.path += qchar + qstr;
+          }
+          break;
   
         default: ;
       }
     }
   }
 
-  var postData = {
+  let postData = {
     'body': '',
     'content-length': 0,
     'content-type': ''
   };
 
-  var postState = {
+  let postState = {
     isUpload: false,
     isPost: false
   };
@@ -198,9 +217,9 @@ gohttp.prototype.request = async function (url, options = null) {
 
 gohttp.prototype._coreRequest = async function (opts, postData, postState) {
   
-  var h = (opts.protocol === 'https:') ? https : http;
+  let h = (opts.protocol === 'https:') ? https : http;
 
-  var ret = {
+  let ret = {
     buffers : [],
     length: 0,
     data : '',
@@ -225,7 +244,7 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
 
   return new Promise ((rv, rj) => {
 
-      var r = h.request(opts, (res) => {
+      let r = h.request(opts, (res) => {
 
         if (opts.encoding) {
           //默认为buffer
@@ -288,11 +307,11 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
 };
 
 gohttp.prototype._coreDownload = function (opts, postData, postState) {
-  var h = (opts.protocol === 'https:') ? https : http;
+  let h = (opts.protocol === 'https:') ? https : http;
 
   if (!opts.dir) {opts.dir = './';}
 
-  var getWriteStream = function (filename) {
+  let getWriteStream = function (filename) {
     if (opts.target) {
       return fs.createWriteStream(opts.target, {encoding:'binary'});
     } else {
@@ -306,7 +325,7 @@ gohttp.prototype._coreDownload = function (opts, postData, postState) {
     }
   };
 
-  var checkMakeFileName = function (filename = '') {
+  let checkMakeFileName = function (filename = '') {
     if (!filename) {
       var nh = crypto.createHash('sha1');
       nh.update(`${(new Date()).getTime()}--`);
@@ -315,12 +334,12 @@ gohttp.prototype._coreDownload = function (opts, postData, postState) {
     return filename;
   };
 
-  var parseFileName = function (headers) {
-    var fname = '';
+  let parseFileName = function (headers) {
+    let fname = '';
     if(headers['content-disposition']) {
-      var name_split = headers['content-disposition'].split(';').filter(p => p.length > 0);
+      let name_split = headers['content-disposition'].split(';').filter(p => p.length > 0);
 
-      for(let i=0; i < name_split.length; i++) {
+      for (let i=0; i < name_split.length; i++) {
         if (name_split[i].indexOf('filename*=') >= 0) {
           fname = name_split[i].trim().substring(10);
           //fname = fname.split('\'')[2];
@@ -334,18 +353,18 @@ gohttp.prototype._coreDownload = function (opts, postData, postState) {
     return fname;
   };
 
-  var downStream = null;
-  var filename = '';
-  var total_length = 0;
-  var sid = null;
-  var progressCount = 0;
-  var down_length = 0;
+  let downStream = null;
+  let filename = '';
+  let total_length = 0;
+  let sid = null;
+  let progressCount = 0;
+  let down_length = 0;
   if (opts.progress === undefined) {
     opts.progress = true;
   }
 
   return new Promise((rv, rj) => {
-    var r = h.request(opts, res => {
+    let r = h.request(opts, res => {
       //res.setEncoding('binary');
       filename = parseFileName(res.headers);
       if (res.headers['content-length']) {

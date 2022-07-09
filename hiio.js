@@ -434,6 +434,20 @@ class _Request {
       reqobj.path = `/${reqobj.path}`
     }
 
+    if (reqobj.query) {
+      let qstr;
+      let qchar = '?';
+      if (typeof reqobj.query === 'object') {
+        qstr = qs(reqobj.query)
+      } else {
+        qstr = reqobj.query
+      }
+
+      if (reqobj.path.indexOf('?') > 0) qchar = '&'
+
+      reqobj.path += qchar + qstr
+    }
+
     if (reqobj.timeout === undefined) {
       reqobj.timeout = 15000
     }
@@ -704,7 +718,7 @@ connect --> session --> session.request --> stream1
 
  */
 
-var hiio = function () {
+let hiio = function () {
 
   if (!(this instanceof hiio)) {
     return new hiio()
