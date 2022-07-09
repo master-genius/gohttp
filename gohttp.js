@@ -80,6 +80,22 @@ gohttp.prototype.parseUrl = function (url) {
   return urlobj;
 };
 
+function setOptsQuery (opts, options) {
+  if (options.query) {
+    let qstr;
+    let qchar = '?';
+
+    if (typeof options.query === 'object')
+        qstr = qs(options.query);
+    else
+        qstr = options.query;
+    
+    if (opts.path.indexOf('?') > 0) qchar = '&';
+
+    opts.path += qchar + qstr;
+  }
+}
+
 gohttp.prototype.request = async function (url, options = null) {
 
   let opts;
@@ -120,22 +136,12 @@ gohttp.prototype.request = async function (url, options = null) {
         case 'body':
         case 'rawBody':
         case 'family':
-          opts[k] = options[k]; break;
+          if (options[k] !== opts[k])
+            opts[k] = options[k];
+          break;
 
         case 'query':
-          if (options.query) {
-            let qstr;
-            let qchar = '?';
-
-            if (typeof options.query === 'object')
-                qstr = qs(options.query);
-            else
-                qstr = options.query;
-            
-            if (opts.path.indexOf('?') > 0) qchar = '&';
-
-            opts.path += qchar + qstr;
-          }
+          setOptsQuery(opts, options);
           break;
   
         default: ;
@@ -628,6 +634,8 @@ let _hiicompat = function (url, options, t) {
       opts.timeout = options.timeout;
 
     if (!opts.path) opts.path = this.urlobj.path;
+
+    if (opts.query) setOptsQuery(opts, opts);
   };
 
   this.methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
