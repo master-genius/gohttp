@@ -30,7 +30,8 @@ npm i gohttp
 
 const {httpcli} = require('gohttp');
 
-httpcli.get('http://localhost:2020/')
+//使用query选项设置查询字符串。
+httpcli.get('http://localhost:2020/', { timeout: 3000, query: {key:45091, x: 32} })
         .then(res => {
             console.log(res.headers, res.status);
             return res.text();
@@ -192,6 +193,10 @@ true或false，表示请求是否成功。
 返回数据的总长度，单位是字节。
 
 > **HTTP/2客户端返回的res也包括这些属性。**
+
+### 注意事项
+
+http/1.1请求，可能需要通过选项family指定使用IPv4还是IPv6。
 
 
 ## HTTP/2 请求
