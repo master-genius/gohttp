@@ -161,6 +161,40 @@ httpcli.download('https://localhost:2021/download', {
 
 ```
 
+## 通过rawBody传递请求体数据
+
+有时候，你可能需要转发请求数据。此时，若在服务端收到请求以后，再次通过body选项传递数据，需要再一次构造HTTP协议的请求体数据，会比较耗费性能。这时候可以通过rawBody把服务端的原始请求数据传递过去，实现转发。
+
+```javascript
+
+'use strict'
+
+//使用titbit框架作为服务端服务进行示例
+const Titbit = require('titbit')
+
+const {httpcli} = require('gohttp')
+
+//初始化HTTP服务端应用
+const app = new Titbit()
+
+app.post('/transmit', async ctx => {
+    /*
+     * 把前端应用提交的数据转发给后台服务http://localhost:1200/data
+     * ctx中的rawBody保存了原始HTTP协议格式的请求体数据。
+    */
+    let ret = await httpcli.post('http://localhost:1200/data', {
+        headers: ctx.headers,
+        rawBody: ctx.rawBody
+    })
+
+    c.send(ret)
+})
+
+app.run(1234)
+
+```
+
+
 ## 请求返回值（res）
 
 请求的返回值包括以下属性：
@@ -194,7 +228,7 @@ true或false，表示请求是否成功。
 
 > **HTTP/2客户端返回的res也包括这些属性。**
 
-### 注意事项
+## 注意事项
 
 http/1.1请求，可能需要通过选项family指定使用IPv4还是IPv6。
 
