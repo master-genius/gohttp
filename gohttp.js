@@ -136,8 +136,7 @@ gohttp.prototype.request = async function (url, options = null) {
         case 'body':
         case 'rawBody':
         case 'family':
-          if (options[k] !== opts[k])
-            opts[k] = options[k];
+          opts[k] = options[k];
           break;
 
         case 'query':
