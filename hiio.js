@@ -6,6 +6,7 @@ const fs = require('fs')
 const urlparse = require('url')
 const qs = require('./qs')
 const bodymaker = require('./bodymaker')
+const fmtpath = require('./fmtpath')
 
 function parseUrl (url) {
 
@@ -13,12 +14,17 @@ function parseUrl (url) {
 
   let headers = {
     ':method' : 'GET',
-    ':path': urlobj.pathname+urlobj.search,
+    ':path': urlobj.pathname + urlobj.search,
   }
 
   return {
-    url : urlobj,
-    headers:headers
+    hash      : urlobj.hash,
+    host      : urlobj.host,
+    hostname  : urlobj.hostname,
+    protocol  : urlobj.protocol,
+    pathname  : urlobj.pathname,
+    path: headers[':path'],
+    headers: headers
   }
 
 }
@@ -341,7 +347,7 @@ class _Request {
 
   constructor (options) {
     this.session = options.session
-    this.host = options.host
+    this.url = options.url
     this.bodymaker = options.bodymaker
     this.parent = options.parent
     this.pending = options.pending
@@ -349,6 +355,28 @@ class _Request {
     this.keepalive = options.keepalive
     this.reconnDelay = options.reconnDelay
     this.connected = false
+    
+    this.headers = null
+
+    Object.defineProperty(this, '__prefix__', {
+      enumerable: false,
+      configurable: false,
+      writable: true,
+      value: fmtpath(options.prefix || '')
+    })
+
+    Object.defineProperty(this, 'prefix', {
+      set: function (path) {
+        this.__prefix__ = fmtpath(path)
+      },
+
+      get: function () {
+        return this.__prefix__
+      }
+    })
+
+    if (options.headers) this.setHeader(options.headers)
+
     this.init()
   }
 
@@ -403,6 +431,18 @@ class _Request {
     this.parent._freeRequest(this)
   }
 
+  setHeader (key, val) {
+    if (!this.headers) this.headers = {}
+
+    if (typeof key === 'object') {
+      for (let k in key) this.headers[ k.toLowerCase() ] = key[k]
+    } else {
+      this.headers[ key.toLowerCase() ] = val
+    }
+
+    return this
+  }
+
   /**
    * {
    *    method : 'GET',
@@ -420,6 +460,13 @@ class _Request {
   checkAndSetOptions (reqobj) {
     if (reqobj.headers === undefined || typeof reqobj.headers !== 'object') {
       reqobj.headers = {}
+    }
+
+    if (this.headers && typeof this.headers === 'object') {
+      for (let k in this.headers) {
+        if (reqobj.headers[k] === undefined)
+            reqobj.headers[k] = this.headers[k]
+      }
     }
 
     if (reqobj.method === undefined || _methodList.indexOf(reqobj.method) < 0) {
@@ -452,7 +499,13 @@ class _Request {
       reqobj.timeout = 15000
     }
 
-    reqobj.headers[':path'] = reqobj.path
+    if (this.__prefix__ && !reqobj.withoutPrefix) {
+      console.log(this.prefix)
+      reqobj.headers[':path'] = `${this.prefix}${reqobj.path}`
+    } else {
+      reqobj.headers[':path'] = reqobj.path
+    }
+
     reqobj.headers[':method'] = reqobj.method
   }
 
@@ -683,15 +736,24 @@ class sessionPool {
     }
   }
 
-  getSession () {
+  getSession (deep = 0) {
     if (this.pool.length <= 0) {
       return null
     }
+
     if ( (this.step+1) >= this.pool.length) {
       this.step = -1
     }
+
     this.step += 1
-    return this.pool[this.step]
+
+    let sess = this.pool[this.step]
+
+    if (!sess.connected) {
+      if (deep < this.pool.length && deep < 50) return this.getSession(deep + 1)
+    }
+
+    return sess
   }
 
   add (sess) {
@@ -742,8 +804,10 @@ hiio.prototype._freeRequest = function (req) {
   if (this.pool.length < this.maxPool) {
     req.pending = true
     req.session = null
-    req.host = ''
+    req.url = ''
     req.connected = false
+    req.headers = null
+    req.prefix = ''
     this.pool.push(req)
   }
 }
@@ -752,9 +816,11 @@ hiio.prototype._getPool = function (options) {
   let r = this.pool.pop()
   
   if (r) {
+    r.__prefix__ = options.prefix
+    options.headers && r.setHeader(options.headers)
     r.connected = true
     r.session = options.session
-    r.host = options.host
+    r.url = options.url
     r.pending = false
     r.parent = options.parent
     r.bodymaker = options.bodymaker
@@ -775,6 +841,16 @@ hiio.prototype._newRequest = function (options) {
 hiio.prototype.parseUrl = parseUrl
 
 hiio.prototype.connect = function (url, options = {}) {
+
+  let urlobj = parseUrl(url);
+
+  if (!options || typeof options !== 'object') options = {};
+
+  let prefix = ''
+
+  if (urlobj.pathname && urlobj.pathname !== '/') {
+    prefix = fmtpath(urlobj.pathname)
+  }
 
   if (options.requestCert  === undefined) {
     options.requestCert = false
@@ -813,8 +889,10 @@ hiio.prototype.connect = function (url, options = {}) {
   }
 
   let newReq = this._newRequest({
+    prefix: prefix,
     session : h,
-    host : url,
+    url : url,
+    headers: options.headers,
     bodymaker : this.bodymaker,
     parent : this,
     pending: false,

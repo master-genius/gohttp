@@ -7,6 +7,7 @@ const fs = require('fs');
 const urlparse = require('url');
 const qs = require('./qs');
 const bodymaker = require('./bodymaker');
+const fmtpath = require('./fmtpath');
 
 let gohttp = function (options = {}) {
   if (! (this instanceof gohttp)) { return new gohttp(options); }
@@ -47,12 +48,13 @@ gohttp.prototype.parseUrl = function (url) {
   let u = new urlparse.URL(url);
 
   let urlobj = {
-    hash :    u.hash,
-    hostname :  u.hostname,
-    protocol :  u.protocol,
-    path :    u.pathname,
-    method :  'GET',
-    headers : {},
+    hash      : u.hash,
+    hostname  : u.hostname,
+    protocol  : u.protocol,
+    path      : u.pathname,
+    pathname  : u.pathname,
+    method    : 'GET',
+    headers   : {},
   };
 
   if (u.search.length > 0) {
@@ -587,7 +589,9 @@ gohttp.prototype.transmit = function (url, opts = {}) {
 
 /** ------------ 兼容http2的接口层，和hiio.js接口一致 ---------------- */
 
-let _hiicompat = function (url, options, t) {
+let compatMethods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
+
+function _hiicompat (url, options, t) {
   if (!(this instanceof _hiicompat)) {
     return new _hiicompat(url, options, t);
   }
@@ -604,71 +608,122 @@ let _hiicompat = function (url, options, t) {
 
   this.port = this.urlobj.port;
 
-  this.copyUrl = function () {
+  this.methods = compatMethods;
+
+  this.headers = null;
+
+  options.headers && this.setHeader(options.headers)
+
+  Object.defineProperty(this, '__prefix__', {
+    configurable: false,
+    writable: true,
+    enumerable: false,
+    value: fmtpath(this.urlobj.pathname)
+  });
+
+};
+
+compatMethods.forEach(m => {
+  let mlower = m.toLowerCase();
+  _hiicompat.prototype[ mlower ] = function (opts) {
+    this.setOptions(opts, m, true);
+    return this.req.request(opts);
+  };
+});
+
+/**
+ * 
+ * @param {object} opts {path: '/', headers:{...}}
+ */
+_hiicompat.prototype.upload = function (opts) {
+  //在request中，检测到如果两个参数相同则不会把options中的值复制给opts
+  //使用这种方式，可以利用upload的选项检测操作。
+  this.setOptions(opts, 'POST');
+  return this.req.upload(opts, opts);
+};
+
+_hiicompat.prototype.up = function (opts) {
+  this.setOptions(opts, 'POST');
+  return this.req.up(opts, opts);
+};
+
+_hiicompat.prototype.download = function (opts) {
+  this.setOptions(opts, 'GET');
+  return this.req.download(opts, {isDownload: true});
+};
+
+_hiicompat.prototype.copyUrl = function () {
     let new_url = {
       ...this.urlobj
     };
     new_url.headers = {};
     return new_url;
-  };
+};
 
-  let setOptions = (opts, method, resetMethod = false) => {
-    for (let k in this.urlobj) {
-      if (k === 'headers' || k === 'method' || k === 'path')
-        continue;
+_hiicompat.prototype.setHeader = function (key, val = null) {
+  if (!this.headers) this.headers = Object.create(null);
+  if (typeof key === 'object') {
+    for (let k in key) this.headers[k] = key[k];
+  } else {
+    this.headers[key] = val;
+  }
+  return this;
+};
 
-      opts[k] = this.urlobj[k];
-    }
+Object.defineProperty(_hiicompat.prototype, 'prefix', {
+  get: function () {
+    return this.__prefix__;
+  },
 
-    if (!opts.method || resetMethod) opts.method = method;
+  set: function (path) {
+    this.__prefix__ = fmtpath(path);
+  }
+});
 
-    if (!opts.headers) opts.headers = {};
+Object.defineProperty(_hiicompat.prototype, 'setOptions', {
+  value: setOptions,
+  configurable: false,
+  writable: false,
+  enumerable: false
+});
 
-    if (options && options.headers) {
-      for (let k in options.headers)
-        opts.headers[k] = options.headers[k];
-    }
+function setOptions (opts, method, resetMethod = false) {
 
-    if (opts.timeout === undefined && options.timeout)
-      opts.timeout = options.timeout;
+  for (let k in this.urlobj) {
+    if (k === 'headers' || k === 'method' || k === 'path')
+      continue;
 
-    if (!opts.path) opts.path = this.urlobj.path;
-
-    if (opts.query) setOptsQuery(opts, opts);
-  };
-
-  this.methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
-
-  let mlower;
-  for (let m of this.methods) {
-    mlower = m.toLowerCase();
-    this[ mlower ] = function (opts) {
-      setOptions(opts, m, true);
-      return this.req[mlower](opts);
-    };
+    opts[k] = this.urlobj[k];
   }
 
-  /**
-   * 
-   * @param {object} opts {path: '/', headers:{...}}
-   */
-  this.upload = function (opts) {
-    //在request中，检测到如果两个参数相同则不会把options中的值复制给opts
-    //使用这种方式，可以利用upload的选项检测操作。
-    setOptions(opts, 'POST');
-    return this.req.upload(opts, opts);
-  };
+  if (!opts.method || resetMethod) opts.method = method;
+
+  if (!opts.headers) opts.headers = {};
   
-  this.up = function (opts) {
-    setOptions(opts, 'POST');
-    return this.req.up(opts, opts);
-  };
+  if (this.headers && typeof this.headers === 'object') {
+    for (let k in this.headers) {
+      opts.headers[k] = this.headers[k];
+    }
+  }
 
-  this.download = function (opts) {
-    setOptions(opts, 'GET');
-    return this.req.download(opts, {isDownload: true});
-  };
+  let options = this.options;
 
+  if (options && options.headers) {
+    for (let k in options.headers)
+      opts.headers[k] = options.headers[k];
+  }
+
+  if (opts.timeout === undefined && options.timeout)
+    opts.timeout = options.timeout;
+
+  if (!opts.path) opts.path = this.urlobj.path;
+  else {
+    if (this.__prefix__ !== '' && !opts.withoutPrefix) {
+      opts.path = `${this.__prefix__}${opts.path}`;
+    }
+  }
+
+  if (opts.query) setOptsQuery(opts, opts);
 };
 
 /**
