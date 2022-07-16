@@ -413,7 +413,7 @@ hs.up({
 | keepalive | 是否保持连接，开启后，断开会自动重连。 |
 | max | 使用connectPool指定最大多少个连接。 |
 | reconnDelay | 重连延迟，毫秒值，默认为500毫秒。 |
-
+| headers | 初始化连接，默认的消息头。 |
 
 ----
 
@@ -539,14 +539,22 @@ app.run(port)
 
 const {httpcli} = require('gohttp');
 
-let hs = httpcli.connect('http://localhost:1234');
+// /api自动作为所有请求的路径前缀。
+let hs = httpcli.connect('http://localhost:1234/api', {
+      headers: {
+        'access-token': '123456'
+      }
+    });
 
 hs.post({
+    //实际请求为 /api/p
     path: '/p',
     body: {
         a: 123,
         b: 234
     },
+
+    //发送消息头会带上access-token
     headers: {
         'content-type': 'application/x-www-form-urlencoded'
     }
@@ -555,4 +563,12 @@ hs.post({
     console.log(res.text(), res.headers);
 })
 
+//取消路径前缀
+hs.prefix = ''
+//取消默认消息头
+hs.headers = null
+
 ```
+
+在兼容层接口部分，url路径部分会自动作为prefix，用于所有请求的路径前缀。可以通过prefix设置。
+
