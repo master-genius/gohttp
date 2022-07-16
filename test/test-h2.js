@@ -4,7 +4,18 @@ const hiio = require('../hiio')
 
 let hii = new hiio()
 
-let h = hii.connect('https://localhost:2021')
+let h = hii.connect('https://localhost:2021/api', {
+  headers: {
+    'authorization': 'sdfh2934u0hsdafkhj'
+  }
+})
+
+//h.prefix = ''
+h.setHeader({
+  'access-token': 'sdkfh93hr98ikhddsf',
+  'x-key': '2139078'
+})
+.setHeader('x-ok', 'rich')
 
 for (let i = 0; i < 10; i++) {
   h.get({
@@ -12,7 +23,7 @@ for (let i = 0; i < 10; i++) {
     query: {n: 234}
   })
   .then(ret => {
-      console.log(ret)
+      console.log(ret.ok, ret.status, ret.text())
   })
   .catch (err => { console.error(err) })
   
@@ -22,12 +33,12 @@ for (let i = 0; i < 10; i++) {
     query: 'y=123'
   })
   .then(ret => {
-      console.log(ret)
+    console.log(ret.ok, ret.status, ret.text())
   })
   .catch (err => { console.error(err) })
 }
 
 setTimeout(() => {
   h.close()
-}, 8000);
+}, 5000);
 

@@ -2,7 +2,12 @@ const gohttp = require('../gohttp.js');
 
 let hcli = new gohttp()
 
-let h = hcli.connect('https://localhost:2021/')
+let h = hcli.connect('https://localhost:2021/api')
+
+h.setHeader('x-ok', 'rich')
+.setHeader({
+  'access-token': 'df023rsdfhlk'
+})
 
 for(let i=0; i<10; i++) {
     h.get({
