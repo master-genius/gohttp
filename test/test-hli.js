@@ -17,7 +17,7 @@ for(let i=0; i<10; i++) {
         console.log(err);
     });
 
-    hcli.post('https://localhost:2021/test', {
+    hcli.post('https://ip6-localhost:2021/test', {
         body : {user : 'brave'},
         family: 6,
         query: {key: 12309}
