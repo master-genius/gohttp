@@ -4,9 +4,9 @@ const http2 = require('http2')
 const crypto = require('crypto')
 const fs = require('fs')
 const urlparse = require('url')
-const qs = require('./qs')
-const bodymaker = require('./bodymaker')
-const fmtpath = require('./fmtpath')
+const qs = require('./qs.js')
+const bodymaker = require('./bodymaker.js')
+const fmtpath = require('./fmtpath.js')
 
 function parseUrl (url) {
 

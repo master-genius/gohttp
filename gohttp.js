@@ -5,9 +5,9 @@ const https = require('https');
 const crypto = require('crypto');
 const fs = require('fs');
 const urlparse = require('url');
-const qs = require('./qs');
-const bodymaker = require('./bodymaker');
-const fmtpath = require('./fmtpath');
+const qs = require('./qs.js');
+const bodymaker = require('./bodymaker.js');
+const fmtpath = require('./fmtpath.js');
 
 let gohttp = function (options = {}) {
   if (! (this instanceof gohttp)) { return new gohttp(options); }
