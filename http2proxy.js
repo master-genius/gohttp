@@ -416,19 +416,36 @@ HiiProxy.prototype.mid = function () {
         let resolved = false
         let rejected = false
 
+        c.stream.on('timeout', () => {
+          stm.close(http2.constants.NGHTTP2_CANCEL)
+        })
+
+        c.stream.on('close', () => {
+          stm.close(http2.constants.NGHTTP2_STREAM_CLOSED)
+        })
+
         stm.setTimeout(pr.timeout, () => {
           stm.close(http2.constants.NGHTTP2_CANCEL)
         })
 
         stm.on('aborted', err => {
-          !resolved && !rejected && (rejected = true) && rj(err)
+          if (!resolved && !rejected) {
+            rejected = true
+            rj(err)
+          }
         })
 
         stm.on('close', () => {
           if (stm.rstCode === http2.constants.NGHTTP2_NO_ERROR) {
-            !resolved && !rejected && (resolved = true) && rv()            
+            if (!resolved && !rejected) {
+              resolved = true
+              rv()
+            }
           } else {
-            !resolved && !rejected && (rejected = true) && rj()
+            if (!resolved && !rejected) {
+              rejected = true
+              rj()
+            }
           }
         })
 
@@ -438,12 +455,10 @@ HiiProxy.prototype.mid = function () {
 
         stm.on('frameError', err => {
           stm.close(http2.constants.NGHTTP2_FRAME_SIZE_ERROR)
-          //!resolved && !rejected && (rejected = true) && rj(err)
         })
 
         stm.on('error', err => {
           stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
-          //!resolved && !rejected && (rejected = true) && rj(err)
         })
 
         c.request.on('data', chunk => {
@@ -460,7 +475,11 @@ HiiProxy.prototype.mid = function () {
 
         stm.on('end', () => {
           stm.close()
-          !resolved && !rejected && (resolved = true) && rv()
+
+          if (!resolved && !rejected) {
+            resolved = true
+            rv()
+          }
         })
 
       })
