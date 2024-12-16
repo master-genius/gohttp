@@ -415,13 +415,18 @@ HiiProxy.prototype.mid = function () {
         let stm = hii.session.request(c.headers)
         let resolved = false
         let rejected = false
+        let request_stream = c.stream
 
         c.stream.on('timeout', () => {
           stm.close(http2.constants.NGHTTP2_CANCEL)
         })
 
         c.stream.on('close', () => {
-          stm.close(http2.constants.NGHTTP2_STREAM_CLOSED)
+          if (request_stream && request_stream.rstCode !== http2.constants.NGHTTP2_NO_ERROR) {
+            stm.close(request_stream.rstCode)
+          }
+
+          request_stream = null
         })
 
         stm.setTimeout(pr.timeout, () => {
