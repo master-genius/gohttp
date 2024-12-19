@@ -688,7 +688,7 @@ class _Request {
 class SessionPool {
 
   constructor(options = {}) {
-    this.max = 10
+    this.max = 50
     this.pool = []
     this.step = -1
 
@@ -763,12 +763,12 @@ class SessionPool {
       this.step = -1
     }
 
-    this.step += 1
+    this.step++
 
     let sess = this.pool[this.step]
 
     if (!sess.connected) {
-      if (deep < this.pool.length && deep < 50) return this.getSession(deep + 1)
+      if (deep < this.pool.length) return this.getSession(deep + 1)
     }
 
     return sess

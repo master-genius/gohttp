@@ -278,11 +278,13 @@ HiiProxy.prototype.setHostProxy = function (cfg) {
 }
 
 HiiProxy.prototype.checkAlive = function (pr) {
-  if (!pr.h2Pool || !pr.h2Pool.pool[0].connected) {
-    return false
+  if (!pr.h2Pool) return false
+
+  for (let a of pr.h2Pool.pool) {
+    if (a.connected) return true
   }
 
-  return true
+  return false
 }
 
 HiiProxy.prototype.getBackend = function (c, host) {
@@ -370,12 +372,12 @@ HiiProxy.prototype.mid = function () {
       pr = self.getBackend(c, host)
 
       if (!pr) {
-        await c.ext.delay(5)
+        await c.ext.delay(9)
         pr = self.getBackend(c, host)
 
         if (!pr) {
           for (let i = 0; i < 200; i++) {
-            await c.ext.delay(5)
+            await c.ext.delay(6 + i)
             pr = self.getBackend(c, host)
             if (pr) break
           }
