@@ -223,16 +223,16 @@ HiiProxy.prototype.setHostProxy = function (cfg) {
       pt = fmtpath(tmp.path)
 
       backend_obj = {
-        url : tmp.url,
-        headers : null,
-        path : tmp.path,
+        url: tmp.url,
+        headers: null,
+        path: tmp.path,
         pathLength: tmp.path.length,
         rewrite: false,
         weight: 1,
-        weightCount : 0,
-        alive : true,
-        reconnDelay : 0,
-        max: 100,
+        weightCount: 0,
+        alive: true,
+        reconnDelay: 0,
+        max: 50,
         debug: this.debug,
         h2Pool: null,
         timeout: this.timeout,
@@ -443,6 +443,8 @@ HiiProxy.prototype.mid = function () {
         })
 
         stm.on('close', () => {
+          stm.removeAllListeners()
+
           if (stm.rstCode === http2.constants.NGHTTP2_NO_ERROR) {
             if (!resolved && !rejected) {
               resolved = true
