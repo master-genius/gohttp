@@ -463,7 +463,7 @@ HiiProxy.prototype.mid = function () {
         })
 
         stm.on('frameError', err => {
-          stm.close(http2.constants.NGHTTP2_FRAME_SIZE_ERROR)
+          stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
         })
 
         stm.on('error', err => {
