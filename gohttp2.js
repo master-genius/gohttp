@@ -412,7 +412,12 @@ class GoHttp2 {
   async upload(reqobj) { 
       reqobj.multipart = true; 
       if(!reqobj.method) reqobj.method = 'POST';
-      return this.request(reqobj); 
+      return this.request(reqobj);
+  }
+
+  async up(reqobj) {
+    if (!reqobj.file) throw new Error('file required');
+    return this.upload({ ...reqobj, files: { [reqobj.name || 'file']: reqobj.file } });
   }
 
   async download(reqobj) {
@@ -457,6 +462,9 @@ class SessionPool {
   async post(reqobj) { return this._getClient().post(reqobj); }
   async put(reqobj) { return this._getClient().put(reqobj); }
   async upload(reqobj) { return this._getClient().upload(reqobj); }
+
+  async up(reqobj) {return this.upload(reqobj);}
+
   async download(reqobj) { return this._getClient().download(reqobj); }
   
   close() { this.pool.forEach(c => c.close()); }
