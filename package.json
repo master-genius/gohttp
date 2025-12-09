@@ -1,15 +1,15 @@
 {
   "name": "gohttp",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "description": "http & https client for HTTP/1.1 and HTTP/2",
   "main": "index.js",
   "scripts": {
     "test": "echo no test specified"
   },
   "bin": {
-    "httpcmd": "node bin/httpcmd.js",
-    "httpbench": "node bin/httpbench.js",
-    "httpab": "node bin/httpab.js"
+    "httpcmd": "./bin/httpcmd.js",
+    "httpbench": "./bin/httpbench.js",
+    "httpab": "./bin/httpab.js"
   },
   "repository": {
     "type": "git",
@@ -35,7 +35,7 @@
     "balance"
   ],
   "author": "BraveWang",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/master-genius/gohttp/issues"
   },
