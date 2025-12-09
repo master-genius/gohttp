@@ -10,7 +10,7 @@ const { hcli, http2Connect } = require('../index.js');
 
 const args = process.argv.slice(2);
 const config = {
-  url: '', method: 'GET', type: 'h1', data: null, file: null,
+  url: '', method: 'GET', type: 'h1', data: null, file: null, uploadName: 'file',
   concurrency: 1, total: 100, processes: os.cpus().length, headers: {}
 };
 
@@ -21,6 +21,7 @@ for (let i = 0; i < args.length; i++) {
     case '-m': config.method = args[++i].toUpperCase(); break;
     case '-d': config.data = args[++i]; break;
     case '-f': config.file = args[++i]; break;
+    case '--upname': config.uploadName = args[++i]; break;
     case '-c': config.concurrency = parseInt(args[++i]); break;
     case '-n': config.total = parseInt(args[++i]); break;
     case '-p': config.processes = parseInt(args[++i]); break;
@@ -49,7 +50,17 @@ if (cluster.isWorker) {
           let r;
           const opts = { method: config.method, headers: { ...config.headers } };
           if (config.file) {
-             r = await client.up({ ...opts, path: isH2?undefined:config.url, file: config.file });
+              if (!isH2) {
+                r = await client.up(config.url, {
+                  ...opts, file: config.file, name: config.uploadName
+                })
+              } {
+                r = await client.up({
+                  ...opts,
+                  file: config.file,
+                  name: config.uploadName
+                });
+              }
           } else {
              if (config.data) opts.body = config.data;
              if (isH2) { const u = new URL(config.url); opts.path = u.pathname+u.search; r=await client.request(opts); } 

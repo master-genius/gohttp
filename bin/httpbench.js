@@ -19,11 +19,13 @@ const config = {
   type: 'h1',        // h1 | h2
   data: null,        // body data
   file: null,        // file path
+  uploadName: 'file',
   concurrency: 1,    // -c: 单进程并发数
   total: 1,          // -n: 总请求数
   processes: os.cpus().length, // -p: 进程数 (默认全核)
   headers: {},
   verbose: false     // -v: 显示响应详情
+
 };
 
 function showHelp() {
@@ -43,6 +45,7 @@ Options:
   -p, --proc <num>     Number of processes (Default: CPU cores)
   -H, --header <k:v>   Custom Header
   -v, --verbose        Show response details (Only for single request)
+  --upname             Upload name
 
 Examples:
   # Single Request
@@ -64,6 +67,7 @@ for (let i = 0; i < args.length; i++) {
     case '-m': case '--method': config.method = args[++i].toUpperCase(); break;
     case '-d': case '--data': config.data = args[++i]; break;
     case '-f': case '--file': config.file = args[++i]; break;
+    case '--upname': config.uploadName = args[++i]; break;
     case '-c': case '--conc': config.concurrency = parseInt(args[++i]); break;
     case '-n': case '--num': config.total = parseInt(args[++i]); break;
     case '-p': case '--proc': config.processes = parseInt(args[++i]); break;
@@ -111,11 +115,17 @@ async function sendRequest(client, isH2) {
 
   if (config.file) {
     // 使用库的上传方法
+    if (!isH2) {
+      return client.up(config.url, {
+        ...opts, file: config.file, name: config.uploadName
+      })
+    }
+
     return client.up({
       ...opts,
-      path: isH2 ? undefined : config.url, // H2 已绑定 session，不需要完整 URL
+      //path: isH2 ? undefined : config.url, // H1 需要 url, H2 不需要 (Client 已绑定)
       file: config.file,
-      name: 'file'
+      name: config.uploadName
     });
   } else if (config.data) {
     opts.body = config.data;

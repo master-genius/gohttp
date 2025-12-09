@@ -17,6 +17,7 @@ const config = {
   type: 'h1',      // h1 或 h2
   data: null,      // Body 数据
   file: null,      // 上传的文件路径
+  uploadName: 'file',
   concurrency: 1,  // -c
   total: 1,        // -n
   headers: {},
@@ -37,6 +38,7 @@ Options:
   -n, --num <num>      Total number of requests (Default: 1)
   -v, --verbose        Show response body (Only in non-benchmark mode)
   -H, --header <k:v>   Custom header (Can be used multiple times)
+  --upname             Upload name
 
 Examples:
   # Simple GET
@@ -75,6 +77,9 @@ for (let i = 0; i < args.length; i++) {
     case '-f':
     case '--file':
       config.file = args[++i];
+      break;
+    case '--upname':
+      config.uploadName = args[++i];
       break;
     case '-c':
     case '--conc':
@@ -141,11 +146,17 @@ async function sendRequest(client, isH2 = false) {
     // 使用库的上传封装
     // 注意：在压力测试中，每次都 createReadStream 可能导致 "Too many open files"
     // 但为了模拟真实 IO，这里保持流式读取
+    if (!isH2) {
+      return client.up(config.url, {
+        ...opts, file: config.file, name: config.uploadName
+      })
+    }
+
     return client.up({
       ...opts,
-      path: isH2 ? undefined : config.url, // H1 需要 url, H2 不需要 (Client 已绑定)
+      //path: isH2 ? undefined : config.url, // H1 需要 url, H2 不需要 (Client 已绑定)
       file: config.file,
-      name: 'file' // 默认字段名
+      name: config.uploadName
     });
   } else if (config.data) {
     opts.body = config.data;
