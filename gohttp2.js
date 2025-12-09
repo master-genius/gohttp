@@ -38,6 +38,11 @@ class GoHttp2 {
       this.options.rejectUnauthorized = false;
     }
 
+    this.maxBody = 200 * 1024 * 1024;
+    if (options.maxBody && typeof options.maxBody === 'number') {
+      this.maxBody = options.maxBody;
+    }
+
     this.bodymaker = new BodyMaker(options);
     
     // 内部状态
@@ -234,6 +239,9 @@ class GoHttp2 {
         data: null, // Buffer
         text: () => (response.data ? response.data.toString() : ''),
         json: () => JSON.parse(response.data.toString()),
+        blob: () => {
+          return response.data
+        }
       };
 
       const chunks = [];
@@ -249,7 +257,7 @@ class GoHttp2 {
         chunks.push(chunk);
         totalLen += chunk.length;
         // 简单防护
-        if (totalLen > 200 * 1024 * 1024) { 
+        if (totalLen > this.maxBody) {
             req.close();
             reject(new Error('Response too large'));
         }
