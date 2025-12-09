@@ -16,10 +16,17 @@ It includes three powerful command-line tools (`httpcmd`, `httpbench`, `httpab`)
 
 ## 📦 Installation & Usage
 
+**Install**
+
+```
+npm i gohttp
+```
+
 ```javascript
 const { 
   hcli,          // HTTP/1.1 Default Instance
   http2Connect,  // HTTP/2 Connection Factory
+  h2cli,         // HTTP/2 Helper Instance
   GoHttp,        // HTTP/1.1 Class
   GoHttp2        // HTTP/2 Class
 } = require('./index.js');
@@ -111,13 +118,13 @@ This project provides three tiers of command-line tools. It is recommended to li
 **Examples:**
 ```bash
 # View detailed response (Verbose mode)
-httpcmd -u https://www.google.com -v
+npx httpcmd -u https://www.google.com -v
 
 # Test HTTP/2 interface + JSON POST
-httpcmd -u https://nghttp2.org/httpbin/post -t h2 -d '{"val":1}' -v
+npx httpcmd -u https://nghttp2.org/httpbin/post -t h2 -d '{"val":1}' -v
 
 # Quick file upload
-httpcmd -u http://localhost:3000/upload -f ./test.jpg
+npx httpcmd -u http://localhost:3000/upload -f ./test.jpg
 ```
 
 **Options:**
@@ -133,10 +140,10 @@ httpcmd -u http://localhost:3000/upload -f ./test.jpg
 **Examples:**
 ```bash
 # 50 concurrent connections, 1000 total requests
-httpbench -u http://127.0.0.1:8080 -c 50 -n 1000
+npx httpbench -u http://127.0.0.1:8080 -c 50 -n 1000
 
 # Test HTTP/2 performance
-httpbench -u https://localhost:8443 -t h2 -c 100 -n 5000
+npx httpbench -u https://localhost:8443 -t h2 -c 100 -n 5000
 ```
 
 **Output Example:**
@@ -154,10 +161,10 @@ Latency: min=2ms, max=50ms, avg=12ms
 ```bash
 # Launch 8 processes, 100 concurrency per process (Total 800 concurrency)
 # Send 100,000 requests
-httpab -u http://127.0.0.1:8080 -p 8 -c 100 -n 100000
+npx httpab -u http://127.0.0.1:8080 -p 8 -c 100 -n 100000
 
 # HTTP/2 Extreme Stress Test (Establishes 8 H2 Sessions for multiplexing)
-httpab -u https://127.0.0.1:8443 -t h2 -p 8 -c 200 -n 500000
+npx httpab -u https://127.0.0.1:8443 -t h2 -p 8 -c 200 -n 500000
 ```
 
 **Options:**

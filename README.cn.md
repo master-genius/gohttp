@@ -16,10 +16,19 @@
 
 ## 📦 安装与引入
 
+
+**安装**
+
+```
+npm i gohttp
+```
+
+
 ```javascript
 const { 
   hcli,          // HTTP/1.1 默认实例
   http2Connect,  // HTTP/2 连接工厂
+  h2cli,         // HTTP/2 辅助实例
   GoHttp,        // HTTP/1.1 类
   GoHttp2        // HTTP/2 类
 } = require('./index.js');
@@ -111,13 +120,13 @@ try {
 **用法示例：**
 ```bash
 # 查看接口返回详情 (Verbose 模式)
-httpcmd -u https://www.baidu.com -v
+npx httpcmd -u https://www.baidu.com -v
 
 # 测试 HTTP/2 接口 + JSON POST
-httpcmd -u https://nghttp2.org/httpbin/post -t h2 -d '{"val":1}' -v
+npx httpcmd -u https://nghttp2.org/httpbin/post -t h2 -d '{"val":1}' -v
 
 # 快速上传文件
-httpcmd -u http://localhost:3000/upload -f ./test.jpg
+npx httpcmd -u http://localhost:3000/upload -f ./test.jpg
 ```
 
 **参数说明：**
@@ -133,10 +142,10 @@ httpcmd -u http://localhost:3000/upload -f ./test.jpg
 **用法示例：**
 ```bash
 # 并发 50，总请求 1000 次
-httpbench -u http://127.0.0.1:8080 -c 50 -n 1000
+npx httpbench -u http://127.0.0.1:8080 -c 50 -n 1000
 
 # 测试 HTTP/2 性能
-httpbench -u https://localhost:8443 -t h2 -c 100 -n 5000
+npx httpbench -u https://localhost:8443 -t h2 -c 100 -n 5000
 ```
 
 **输出示例：**
@@ -154,10 +163,10 @@ Latency: min=2ms, max=50ms, avg=12ms
 ```bash
 # 启动 8 个进程，每个进程 100 并发 (总并发 800)
 # 发送 10万 次请求
-httpab -u http://127.0.0.1:8080 -p 8 -c 100 -n 100000
+npx httpab -u http://127.0.0.1:8080 -p 8 -c 100 -n 100000
 
 # HTTP/2 极限压测 (建立 8 个 H2 Session 进行多路复用)
-httpab -u https://127.0.0.1:8443 -t h2 -p 8 -c 200 -n 500000
+npx httpab -u https://127.0.0.1:8443 -t h2 -p 8 -c 200 -n 500000
 ```
 
 **参数说明：**
