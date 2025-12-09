@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { PassThrough } = require('node:stream');
 
-// MIME 映射表可以保持不变，这里为了简洁省略部分
+
 const MIME_TABLE = {
   'css'   : 'text/css',
     'der'   : 'application/x-x509-ca-cert',
