@@ -102,7 +102,7 @@ Both `hcli` and `GoHttp2` support the following options:
 | :--- | :--- | :--- | :--- |
 | `timeout` | Number | 35000 | Request timeout (ms). |
 | `headers` | Object | {} | Custom request headers. |
-| `verifyCert`| Boolean| true | Ignore HTTPS certificate errors (Scoped to current request/connection). |
+| `verifyCert`| Boolean| true | Verify HTTPS certificate, ignore the errors if verifyCert is false(Scoped to current request/connection). |
 | `cert` | Path | - | Path to client certificate. |
 | `key` | Path | - | Path to client private key. |
 

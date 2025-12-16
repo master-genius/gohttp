@@ -104,7 +104,7 @@ try {
 | :--- | :--- | :--- | :--- |
 | `timeout` | Number | 35000 | 请求超时时间 (毫秒) |
 | `headers` | Object | {} | 自定义请求头 |
-| `verifyCert`| Boolean| true | 是否忽略 HTTPS 证书错误 (仅影响当前请求/连接) |
+| `verifyCert`| Boolean| true | 是否进行 HTTPS 证书验证，false表示忽略错误 (仅影响当前请求/连接) |
 | `cert` | Path | - | 客户端证书路径 |
 | `key` | Path | - | 客户端私钥路径 |
 
