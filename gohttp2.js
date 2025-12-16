@@ -26,7 +26,8 @@ class GoHttp2 {
   constructor(urlStr, options = {}) {
     this.urlStr = urlStr;
     this.options = {
-      rejectUnauthorized: true, // 默认安全，ignoretls: true 时改为 false
+      verifyCert: true,
+      rejectUnauthorized: true, // 默认安全，verifyCert: true 时改为 false
       timeout: 15000,
       keepalive: true,
       reconnDelay: 1000,
@@ -34,7 +35,7 @@ class GoHttp2 {
       ...options
     };
 
-    if (this.options.ignoretls) {
+    if (!this.options.verifyCert) {
       this.options.rejectUnauthorized = false;
     }
 

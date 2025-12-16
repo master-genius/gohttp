@@ -53,7 +53,7 @@ class GoHttp {
     this.config = {
       cert: '',
       key: '',
-      ignoretls: false,
+      verifyCert: true,
       ...options
     };
 
@@ -97,7 +97,7 @@ class GoHttp {
       };
 
       if (u.protocol === 'https:') {
-        if (this.config.ignoretls) {
+        if (!this.config.verifyCert) {
           opts.rejectUnauthorized = false;
         } else if (this.cert && this.key) {
           opts.cert = this.cert;
@@ -193,7 +193,7 @@ class GoHttp {
 
     if (!opts.agent) {
       if (opts.protocol === 'https:') {
-        opts.agent = (this.config.ignoretls || opts.rejectUnauthorized === false) 
+        opts.agent = (!this.config.verifyCert || opts.rejectUnauthorized === false) 
           ? globalInsecureAgent 
           : globalHttpsAgent;
       } else {
