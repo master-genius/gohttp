@@ -76,7 +76,7 @@ await hcli.download({
 // 1. 建立连接 (Session)
 const client = http2Connect('https://http2.golang.org', {
   keepalive: true,
-  ignoretls: false
+  verifyCert: false
 });
 
 try {
@@ -104,7 +104,7 @@ try {
 | :--- | :--- | :--- | :--- |
 | `timeout` | Number | 35000 | 请求超时时间 (毫秒) |
 | `headers` | Object | {} | 自定义请求头 |
-| `ignoretls`| Boolean| false | 是否忽略 HTTPS 证书错误 (仅影响当前请求/连接) |
+| `verifyCert`| Boolean| true | 是否忽略 HTTPS 证书错误 (仅影响当前请求/连接) |
 | `cert` | Path | - | 客户端证书路径 |
 | `key` | Path | - | 客户端私钥路径 |
 

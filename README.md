@@ -74,7 +74,7 @@ Suitable for high-performance scenarios requiring persistent connections and mul
 // 1. Establish Connection (Session)
 const client = http2Connect('https://http2.golang.org', {
   keepalive: true,
-  ignoretls: false
+  verifyCert: false
 });
 
 try {
@@ -102,7 +102,7 @@ Both `hcli` and `GoHttp2` support the following options:
 | :--- | :--- | :--- | :--- |
 | `timeout` | Number | 35000 | Request timeout (ms). |
 | `headers` | Object | {} | Custom request headers. |
-| `ignoretls`| Boolean| false | Ignore HTTPS certificate errors (Scoped to current request/connection). |
+| `verifyCert`| Boolean| true | Ignore HTTPS certificate errors (Scoped to current request/connection). |
 | `cert` | Path | - | Path to client certificate. |
 | `key` | Path | - | Path to client private key. |
 
