@@ -7,7 +7,7 @@ const cluster = require('node:cluster');
 const os = require('node:os');
 const { URL } = require('node:url');
 const { performance } = require('node:perf_hooks');
-const { hcli, http2Connect } = require('../index.js'); // 确保这里指向你的入口文件
+const { http2Connect, GoHttp } = require('../index.js');
 
 // --------------------------------------------------------------------------
 // 1. 参数解析与配置
@@ -24,8 +24,8 @@ const config = {
   total: 1,          // -n: 总请求数
   processes: os.cpus().length, // -p: 进程数 (默认全核)
   headers: {},
+  verifyCert: true,
   verbose: false     // -v: 显示响应详情
-
 };
 
 function showHelp() {
@@ -45,7 +45,8 @@ Options:
   -p, --proc <num>     Number of processes (Default: CPU cores)
   -H, --header <k:v>   Custom Header
   -v, --verbose        Show response details (Only for single request)
-  --upname             Upload name
+  -i, --ignore-cv      Ignore Cert Verify
+  -up --upname         Upload name
 
 Examples:
   # Single Request
@@ -67,7 +68,8 @@ for (let i = 0; i < args.length; i++) {
     case '-m': case '--method': config.method = args[++i].toUpperCase(); break;
     case '-d': case '--data': config.data = args[++i]; break;
     case '-f': case '--file': config.file = args[++i]; break;
-    case '--upname': config.uploadName = args[++i]; break;
+    case '-up': case '--upname': config.uploadName = args[++i]; break;
+    case '-i': case '--ignore-cv': config.verifyCert = false; break;
     case '-c': case '--conc': config.concurrency = parseInt(args[++i]); break;
     case '-n': case '--num': config.total = parseInt(args[++i]); break;
     case '-p': case '--proc': config.processes = parseInt(args[++i]); break;
@@ -93,6 +95,10 @@ if (!config.url) {
 
 // 自动修正逻辑
 if (config.file && config.method === 'GET') config.method = 'POST';
+
+let h1cli = new GoHttp({
+  verifyCert: config.verifyCert
+})
 
 // 处理 JSON 数据
 if (config.data) {
@@ -152,10 +158,12 @@ async function runWorker(taskTotal) {
   // 初始化客户端
   if (isH2) {
     // H2: 建立独立连接
-    client = http2Connect(config.url, { rejectUnauthorized: false });
+    client = http2Connect(config.url, {
+                        verifyCert: config.verifyCert,
+                        rejectUnauthorized: config.verifyCert});
   } else {
     // H1: 使用全局单例 Agent
-    client = hcli;
+    client = h1cli;
   }
 
   let successCount = 0;
@@ -228,7 +236,7 @@ async function runSingleMode() {
     const t0 = performance.now();
     
     if (isH2) client = http2Connect(config.url, { rejectUnauthorized: false });
-    else client = hcli;
+    else client = h1cli;
 
     const res = await sendRequest(client, isH2);
     const cost = (performance.now() - t0).toFixed(2);

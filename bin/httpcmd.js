@@ -5,7 +5,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const util = require('node:util');
-const { hcli, http2Connect } = require('../index.js'); // 引入你的核心库
+const { http2Connect, GoHttp} = require('../index.js'); // 引入你的核心库
 
 // --------------------------------------------------------------------------
 // 1. 参数解析逻辑 (简易版)
@@ -21,6 +21,7 @@ const config = {
   concurrency: 1,  // -c
   total: 1,        // -n
   headers: {},
+  verifyCert: true,
   verbose: false   // 是否打印详细响应
 };
 
@@ -38,7 +39,8 @@ Options:
   -n, --num <num>      Total number of requests (Default: 1)
   -v, --verbose        Show response body (Only in non-benchmark mode)
   -H, --header <k:v>   Custom header (Can be used multiple times)
-  --upname             Upload name
+  -i, --ignore-cv      Ignore Cert Verify
+  -up --upname         Upload name
 
 Examples:
   # Simple GET
@@ -79,7 +81,12 @@ for (let i = 0; i < args.length; i++) {
       config.file = args[++i];
       break;
     case '--upname':
+    case '-up':
       config.uploadName = args[++i];
+      break;
+    case '-i':
+    case '--ignore-cv':
+      config.verifyCert = false;
       break;
     case '-c':
     case '--conc':
@@ -119,6 +126,10 @@ if (!config.url) {
 if (config.file) {
   if (config.method === 'GET') config.method = 'POST'; // 上传默认 POST
 }
+
+let h1cli = new GoHttp({
+  verifyCert: config.verifyCert
+})
 
 // 尝试解析 JSON Data
 if (config.data) {
@@ -187,10 +198,12 @@ async function runSingle() {
 
   try {
     if (config.type === 'h2') {
-      client = http2Connect(config.url, { rejectUnauthorized: false });
+      client = http2Connect(config.url, {
+                        verifyCert: config.verifyCert,
+                        rejectUnauthorized: config.verifyCert});
       res = await sendRequest(client, true);
     } else {
-      client = hcli;
+      client = h1cli;
       res = await sendRequest(client, false);
     }
 
