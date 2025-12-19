@@ -260,7 +260,7 @@ async function runBenchmark() {
     if (config.type === 'h2') {
       client = http2Connect(config.url, { rejectUnauthorized: false, debug: false });
     } else {
-      client = hcli; // H1 复用全局 Agent
+      client = h1cli;
     }
 
     try {
