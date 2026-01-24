@@ -220,38 +220,69 @@ class GoHttp {
 
     return new Promise((resolve, reject) => {
       const req = lib.request(opts, (res) => {
-        if (opts.encoding) res.setEncoding(opts.encoding);
-        const chunks = [];
-        let totalLen = 0;
+        // 检查是否为SSE响应
+        const contentType = res.headers['content-type'] || '';
+        const isSSE = contentType.includes('text/event-stream') ||
+                     (contentType.includes('text/plain') && opts.sse);
 
-        res.on('data', (chunk) => {
-          chunks.push(chunk);
-          totalLen += chunk.length;
-          // 限制最大 500MB
-          if (totalLen > this.maxBody) {
-             req.destroy();
-             reject(new Error('Response body too large'));
-          }
-        });
+        // 如果指定了sseCallback且是SSE响应，则使用流式处理
+        if (opts.sseCallback && isSSE) {
+          if (opts.encoding) res.setEncoding(opts.encoding);
 
-        res.on('end', () => {
-          const dataBuf = Buffer.concat(chunks, totalLen);
-          const ret = {
-            status: res.statusCode,
-            headers: res.headers,
-            data: dataBuf,
-            length: totalLen,
-            ok: res.statusCode >= 200 && res.statusCode < 400,
-            error: null,
-            timeout: false,
-            text: (encoding = 'utf8') => dataBuf.toString(encoding),
-            json: (encoding = 'utf8') => JSON.parse(dataBuf.toString(encoding)),
-            blob: () => dataBuf
-          };
-          resolve(ret);
-        });
+          res.on('data', (chunk) => {
+            opts.sseCallback(chunk, res);
+          });
 
-        res.on('error', (err) => resolve({ ok: false, error: err, status: 0 }));
+          res.on('end', () => {
+            opts.sseCallback(null, res); // 通知结束
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              ok: res.statusCode >= 200 && res.statusCode < 400,
+              error: null,
+              timeout: false,
+              text: () => '', // SSE模式下不返回文本内容
+              json: () => {}, // SSE模式下不返回JSON
+              blob: () => Buffer.alloc(0) // SSE模式下不返回blob
+            });
+          });
+
+          res.on('error', (err) => resolve({ ok: false, error: err, status: 0 }));
+        } else {
+          // 传统处理方式
+          if (opts.encoding) res.setEncoding(opts.encoding);
+          const chunks = [];
+          let totalLen = 0;
+
+          res.on('data', (chunk) => {
+            chunks.push(chunk);
+            totalLen += chunk.length;
+            // 限制最大 500MB
+            if (totalLen > this.maxBody) {
+               req.destroy();
+               reject(new Error('Response body too large'));
+            }
+          });
+
+          res.on('end', () => {
+            const dataBuf = Buffer.concat(chunks, totalLen);
+            const ret = {
+              status: res.statusCode,
+              headers: res.headers,
+              data: dataBuf,
+              length: totalLen,
+              ok: res.statusCode >= 200 && res.statusCode < 400,
+              error: null,
+              timeout: false,
+              text: (encoding = 'utf8') => dataBuf.toString(encoding),
+              json: (encoding = 'utf8') => JSON.parse(dataBuf.toString(encoding)),
+              blob: () => dataBuf
+            };
+            resolve(ret);
+          });
+
+          res.on('error', (err) => resolve({ ok: false, error: err, status: 0 }));
+        }
       });
 
       if (opts.timeout) {

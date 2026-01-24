@@ -254,32 +254,86 @@ class GoHttp2 {
         }
       };
 
-      const chunks = [];
-      let totalLen = 0;
+      // 根据是否有sseCallback和是否为SSE响应决定处理方式
+      if (reqobj.sseCallback) {
+        req.on('response', (headers, flags) => {
+          response.headers = headers;
+          response.status = headers[':status'];
+          response.ok = response.status >= 200 && response.status < 400;
 
-      req.on('response', (headers, flags) => {
-        response.headers = headers;
-        response.status = headers[':status'];
-        response.ok = response.status >= 200 && response.status < 400;
-      });
+          // 检查是否为SSE响应
+          const contentType = headers['content-type'] || '';
+          const isSSEType = contentType.includes('text/event-stream') ||
+                           (contentType.includes('text/plain') && reqobj.sse);
 
-      req.on('data', (chunk) => {
-        chunks.push(chunk);
-        totalLen += chunk.length;
-        // 简单防护
-        if (totalLen > this.maxBody) {
-            req.close();
-            reject(new Error('Response too large'));
-        }
-      });
+          if (isSSEType) {
+            // 使用SSE回调处理
+            req.on('data', (chunk) => {
+              reqobj.sseCallback(chunk, { headers, status: response.status });
+            });
 
-      req.on('end', () => {
-        response.data = Buffer.concat(chunks, totalLen);
-        resolve(response);
-      });
+            req.on('end', () => {
+              reqobj.sseCallback(null, { headers, status: response.status }); // 通知结束
+              resolve({
+                status: response.status,
+                headers: response.headers,
+                ok: response.ok,
+                data: null,
+                text: () => '', // SSE模式下不返回文本内容
+                json: () => {}, // SSE模式下不返回JSON
+                blob: () => Buffer.alloc(0) // SSE模式下不返回blob
+              });
+            });
+          } else {
+            // 非SSE响应，继续使用传统处理方式
+            const chunks = [];
+            let totalLen = 0;
+
+            req.on('data', (chunk) => {
+              chunks.push(chunk);
+              totalLen += chunk.length;
+              // 简单防护
+              if (totalLen > this.maxBody) {
+                  req.close();
+                  reject(new Error('Response too large'));
+              }
+            });
+
+            req.on('end', () => {
+              response.data = Buffer.concat(chunks, totalLen);
+              resolve(response);
+            });
+          }
+        });
+      } else {
+        // 无SSE回调，使用传统处理方式
+        const chunks = [];
+        let totalLen = 0;
+
+        req.on('response', (headers, flags) => {
+          response.headers = headers;
+          response.status = headers[':status'];
+          response.ok = response.status >= 200 && response.status < 400;
+        });
+
+        req.on('data', (chunk) => {
+          chunks.push(chunk);
+          totalLen += chunk.length;
+          // 简单防护
+          if (totalLen > this.maxBody) {
+              req.close();
+              reject(new Error('Response too large'));
+          }
+        });
+
+        req.on('end', () => {
+          response.data = Buffer.concat(chunks, totalLen);
+          resolve(response);
+        });
+      }
 
       req.on('error', (err) => reject(err));
-      
+
       // 发送 Body
       if (bodyStream) {
         if (typeof bodyStream.pipe === 'function') {
