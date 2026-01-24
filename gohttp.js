@@ -158,10 +158,19 @@ class GoHttp {
       postState.isPost = true;
       let contentType = opts.headers['content-type'] || '';
 
-      if (contentType.includes('multipart/form-data') || (opts.body && opts.body.files)) {
+      // 优先处理 rawBody，如果提供了 rawBody 则直接使用它
+      if (opts.rawBody) {
+        let buf = Buffer.isBuffer(opts.rawBody) ? opts.rawBody : Buffer.from(opts.rawBody);
+        if (!contentType.includes('multipart')) {
+          opts.headers['content-length'] = buf.length;
+        }
+        postState.bodyStream = buf;
+      }
+      // 处理 multipart/form-data，仅当没有 rawBody 时才检查 body.files
+      else if (contentType.includes('multipart/form-data') || (opts.body && opts.body.files)) {
         const boundary = this.bodymaker.generateBoundary();
         const length = await this.bodymaker.calculateLength(opts.body, boundary);
-        
+
         opts.headers['content-type'] = `multipart/form-data; boundary=${boundary}`;
         opts.headers['content-length'] = length;
         postState.bodyStream = this.bodymaker.makeUploadStream(opts.body, boundary);
@@ -175,15 +184,13 @@ class GoHttp {
       }
       else {
         let buf;
-        if (opts.rawBody) {
-          buf = Buffer.isBuffer(opts.rawBody) ? opts.rawBody : Buffer.from(opts.rawBody);
-        } else if (typeof opts.body === 'object') {
+        if (typeof opts.body === 'object') {
           if (!contentType) opts.headers['content-type'] = 'application/json';
           buf = Buffer.from(JSON.stringify(opts.body));
         } else {
           buf = Buffer.from(String(opts.body));
         }
-        
+
         if (!contentType.includes('multipart')) {
           opts.headers['content-length'] = buf.length;
         }

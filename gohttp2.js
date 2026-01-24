@@ -175,12 +175,21 @@ class GoHttp2 {
 
     // 3. 处理 Body (流式)
     let bodyStream = null;
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(reqobj.method) && reqobj.body) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(reqobj.method) && (reqobj.body || reqobj.rawBody)) {
       // Logic mirrors gohttp.js optimization
       let contentType = headers['content-type'] || '';
 
+      // 优先处理 rawBody，如果提供了 rawBody 则直接使用它
+      if (reqobj.rawBody) {
+         let buf = Buffer.isBuffer(reqobj.rawBody) ? reqobj.rawBody : Buffer.from(reqobj.rawBody);
+         // HTTP/2 推荐尽量带 content-length
+         if (!contentType.includes('multipart')) {
+            headers['content-length'] = buf.length;
+         }
+         bodyStream = buf;
+      }
       // Multipart
-      if (contentType.includes('multipart/form-data') || reqobj.multipart) {
+      else if (contentType.includes('multipart/form-data') || reqobj.multipart) {
         const boundary = this.bodymaker.generateBoundary();
         const len = await this.bodymaker.calculateLength(reqobj.body, boundary);
         headers['content-type'] = `multipart/form-data; boundary=${boundary}`;
