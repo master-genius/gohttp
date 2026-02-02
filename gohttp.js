@@ -223,18 +223,20 @@ class GoHttp {
         // 检查是否为SSE响应
         const contentType = res.headers['content-type'] || '';
         const isSSE = contentType.includes('text/event-stream') ||
-                     (contentType.includes('text/plain') && opts.sse);
+                     (contentType.includes('text/plain') && opts.sse && res.statusCode < 300);
 
         // 如果指定了sseCallback且是SSE响应，则使用流式处理
         if (opts.sseCallback && isSSE) {
           if (opts.encoding) res.setEncoding(opts.encoding);
 
+          let sse_options = {headers: res.headers, status: res.statusCode};
+
           res.on('data', (chunk) => {
-            opts.sseCallback(chunk, res);
+            opts.sseCallback(chunk, sse_options);
           });
 
           res.on('end', () => {
-            opts.sseCallback(null, res); // 通知结束
+            opts.sseCallback(null, sse_options); // 通知结束
             resolve({
               status: res.statusCode,
               headers: res.headers,

@@ -264,16 +264,18 @@ class GoHttp2 {
           // 检查是否为SSE响应
           const contentType = headers['content-type'] || '';
           const isSSEType = contentType.includes('text/event-stream') ||
-                           (contentType.includes('text/plain') && reqobj.sse);
+                           (contentType.includes('text/plain') && reqobj.sse && response.ok);
 
           if (isSSEType) {
             // 使用SSE回调处理
+            let sse_options = { headers, status: response.status };
+
             req.on('data', (chunk) => {
-              reqobj.sseCallback(chunk, { headers, status: response.status });
+              reqobj.sseCallback(chunk, sse_options);
             });
 
             req.on('end', () => {
-              reqobj.sseCallback(null, { headers, status: response.status }); // 通知结束
+              reqobj.sseCallback(null, sse_options); // 通知结束
               resolve({
                 status: response.status,
                 headers: response.headers,
